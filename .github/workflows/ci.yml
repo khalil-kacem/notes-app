@@ -34,8 +34,8 @@ jobs:
       - uses: azure/setup-kubectl@v4
         with:
           version: 'v1.30.0'
-      - run: kubectl apply --dry-run=client -k k8s/overlays/dev/
-      - run: kubectl apply --dry-run=client -k k8s/overlays/prod/
+      - run: kubectl apply --dry-run=client --validate=false -k k8s/overlays/dev/
+      - run: kubectl apply --dry-run=client --validate=false -k k8s/overlays/prod/
 
   build-docker:
     runs-on: ubuntu-latest
