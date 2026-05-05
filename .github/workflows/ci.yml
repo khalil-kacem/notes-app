@@ -17,3 +17,18 @@ jobs:
       - run: cd backend && npm install
       - run: cd backend && npm test
       - run: cd backend && npx eslint src/
+
+  validate-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          if [ ! -f frontend/index.html ]; then
+            echo "Frontend file missing"
+            exit 1
+          fi
+          if [ ! -f frontend/Dockerfile ]; then
+            echo "Frontend Dockerfile missing"
+            exit 1
+          fi
+          echo "Frontend files valid"
