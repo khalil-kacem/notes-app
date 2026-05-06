@@ -58,6 +58,11 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.organization=khalil-kacem
+            -Dsonar.projectKey=khalil-kacem_notes-app
+            -Dsonar.branch.name=dev
 
   build-docker:
     runs-on: ubuntu-latest
