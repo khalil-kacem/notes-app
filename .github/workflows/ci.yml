@@ -150,7 +150,14 @@ jobs:
           push: false
           load: true
           tags: notes-backend:scan
-      - name: Run Trivy vulnerability scanner (Backend)
+      - name: Run Trivy vulnerability scanner (Backend - TABLE output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'notes-backend:scan'
+          format: 'table'
+          severity: 'CRITICAL'
+          exit-code: '0'
+      - name: Run Trivy vulnerability scanner (Backend - SARIF output)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'notes-backend:scan'
@@ -190,7 +197,14 @@ jobs:
           push: false
           load: true
           tags: notes-frontend:scan
-      - name: Run Trivy vulnerability scanner (Frontend)
+      - name: Run Trivy vulnerability scanner (Frontend - TABLE output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'notes-frontend:scan'
+          format: 'table'
+          severity: 'CRITICAL'
+          exit-code: '0'
+      - name: Run Trivy vulnerability scanner (Frontend - SARIF output)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'notes-frontend:scan'
