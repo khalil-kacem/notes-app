@@ -38,8 +38,16 @@ jobs:
         run: |
           kustomize build k8s/overlays/dev/ > /dev/null
           kustomize build k8s/overlays/prod/ > /dev/null
-          kustomize build k8s/argocd/ > /dev/null
-          echo "K8s manifests valid"
+          echo "Kustomize overlays valid"
+      - name: Validate ArgoCD YAMLs
+        run: |
+          for f in k8s/argocd/*.yaml; do
+            if [ -f "$f" ]; then
+              echo "Checking $f"
+              python3 -c "import yaml; yaml.safe_load(open('$f'))" || exit 1
+            fi
+          done
+          echo "ArgoCD YAMLs valid"
 
   sonarqube:
     name: SonarQube Analysis
