@@ -123,10 +123,15 @@ jobs:
           version: 'v1.30.0'
       - uses: medyagh/setup-minikube@latest
       - run: minikube start --driver=docker
-      - name: Install ArgoCD
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.13.0'
+      - name: Install ArgoCD via Helm
         run: |
-          kubectl create namespace argocd || true
-          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          helm repo add argo https://argoproj.github.io/argo-helm || true
+          helm repo update || true
+          helm install argocd argo/argo-cd --namespace argocd --create-namespace || true
           sleep 60
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s || true
       - name: Apply ArgoCD Applications
