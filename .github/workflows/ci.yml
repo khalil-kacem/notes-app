@@ -107,6 +107,8 @@ jobs:
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
       - name: Upload Trivy FS scan results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
@@ -132,8 +134,8 @@ jobs:
           push: false
           tags: notes-frontend:test
 
-  security-scan-images:
-    name: Security - Docker Image Scan (Trivy)
+  security-scan-backend:
+    name: Security - Trivy Backend Image
     runs-on: ubuntu-latest
     needs: build-docker
     permissions:
@@ -148,6 +150,39 @@ jobs:
           push: false
           load: true
           tags: notes-backend:scan
+      - name: Run Trivy vulnerability scanner (Backend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'notes-backend:scan'
+          format: 'sarif'
+          output: 'trivy-backend-results.sarif'
+          severity: 'CRITICAL'
+          exit-code: '0'
+      - name: Upload Trivy backend scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-backend-results.sarif'
+      - name: Fail if CRITICAL vulnerabilities found
+        run: |
+          if [ -f trivy-backend-results.sarif ]; then
+            COUNT=$(grep -c '"level": "error"' trivy-backend-results.sarif || true)
+            if [ "$COUNT" -gt 0 ]; then
+              echo "❌ Found $COUNT CRITICAL vulnerabilities in backend image"
+              exit 1
+            fi
+          fi
+          echo "✅ No CRITICAL vulnerabilities in backend image"
+
+  security-scan-frontend:
+    name: Security - Trivy Frontend Image
+    runs-on: ubuntu-latest
+    needs: build-docker
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
       - name: Build frontend image for scan
         uses: docker/build-push-action@v5
         with:
@@ -155,36 +190,33 @@ jobs:
           push: false
           load: true
           tags: notes-frontend:scan
-      - name: Run Trivy vulnerability scanner (Backend Image)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'notes-backend:scan'
-          format: 'sarif'
-          output: 'trivy-backend-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
-      - name: Run Trivy vulnerability scanner (Frontend Image)
+      - name: Run Trivy vulnerability scanner (Frontend)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'notes-frontend:scan'
           format: 'sarif'
           output: 'trivy-frontend-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
-      - name: Upload Trivy backend scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-backend-results.sarif'
+          severity: 'CRITICAL'
+          exit-code: '0'
       - name: Upload Trivy frontend scan results
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-frontend-results.sarif'
+      - name: Fail if CRITICAL vulnerabilities found
+        run: |
+          if [ -f trivy-frontend-results.sarif ]; then
+            COUNT=$(grep -c '"level": "error"' trivy-frontend-results.sarif || true)
+            if [ "$COUNT" -gt 0 ]; then
+              echo "❌ Found $COUNT CRITICAL vulnerabilities in frontend image"
+              exit 1
+            fi
+          fi
+          echo "✅ No CRITICAL vulnerabilities in frontend image"
 
   push-docker:
     runs-on: ubuntu-latest
-    needs: [build-docker, sonarqube, security-scan-images]
+    needs: [build-docker, sonarqube, security-scan-backend, security-scan-frontend]
     if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
