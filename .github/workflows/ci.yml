@@ -38,6 +38,7 @@ jobs:
         run: |
           kustomize build k8s/overlays/dev/ > /dev/null
           kustomize build k8s/overlays/prod/ > /dev/null
+          kustomize build k8s/argocd/ > /dev/null
           echo "K8s manifests valid"
 
   sonarqube:
@@ -58,11 +59,6 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.organization=khalil-kacem
-            -Dsonar.projectKey=khalil-kacem_notes-app
-            -Dsonar.branch.name=dev
 
   build-docker:
     runs-on: ubuntu-latest
@@ -106,3 +102,32 @@ jobs:
           context: ./frontend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/notes-frontend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/notes-frontend:latest
+
+  deploy-gitops:
+    name: Deploy ArgoCD GitOps
+    runs-on: ubuntu-latest
+    needs: push-docker
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.30.0'
+      - uses: medyagh/setup-minikube@latest
+      - run: minikube start --driver=docker
+      - name: Install ArgoCD
+        run: |
+          kubectl create namespace argocd || true
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+          sleep 60
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s || true
+      - name: Apply ArgoCD Applications
+        run: |
+          kubectl apply -f k8s/argocd/
+          sleep 10
+          kubectl get applications -n argocd || true
+      - name: Verify Deployment
+        run: |
+          sleep 30
+          kubectl get pods -n notes-app || true
+          kubectl get svc -n notes-app || true
